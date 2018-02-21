@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 2.4)
+project( Teste )
+find_package( OpenCV REQUIRED )
+add_executable( lane lane.cpp )
+target_link_libraries( lane ${OpenCV_LIBS} )
