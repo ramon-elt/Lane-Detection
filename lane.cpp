@@ -1,5 +1,8 @@
 /*  Teste para a detecção de caminho
  *  05.02  vesão 0.0
+ *  obs roda com comp1 com algumas diferenção
+ *  o CV antes da classe de imagem e o & que
+ *  não se usa nas matrizes
  *                                   */
 
 #include <sstream>
@@ -12,7 +15,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include "opencv2/highgui.hpp"
+//#include "opencv2/highgui.hpp"
 //#include <opencv2/xfeatures2d.hpp>
 
 #include <sys/time.h>
@@ -56,10 +59,53 @@ class Lane{
     {}
 
 
+    /* Clusters all related similar points indicated by matrix X_p    */
+    void ClosePoints(const cv::Mat X, const cv::Mat X_p, cv::Mat Out, cv::Mat Out_p, const int i){
+        // If there are any point close to this
+        if(X_p.at<double>(i,0)!=0){
+            Out.push_back(X.row(i));
+            Out_p.push_back(i);
+            // Iterates throught column
+            for( int ii = 1; ii <=X_p.at<double>(i,0); ii++){
+                // If there are more points close to this
+                // and it hasn't already been considered
 
+                cout <<"----------------Aqui" << endl;
+
+                if((X_p.at<double>(X_p.at<double>(i,ii),0)!=0)){
+                    ClosePoints(X, X_p, Out, Out_p,X_p.at<double>(i,ii));
+                    cout <<"----------------Aqui2" << endl;
+
+
+                }else{
+                    cout <<"----------------Aqu3" << endl;
+
+                    Out.push_back(X.row(X_p.at<double>(i,ii)));
+                    Out_p.push_back(X_p.at<double>(i,ii));
+                }
+            }
+        }else{
+            Out.push_back(X.row(i));  // Saves this point
+            Out_p.push_back(i);
+
+            cout <<"----------------Out" << Out<< endl;
+            cout <<"----------------Out_p" << Out_p<< endl;
+
+           cout <<"----------------Aqui4" << endl;
+        }
+    }// ClosePoints()
+
+
+
+    /* Reduces similar segments to a single line, this process is ma- */
+    /* de by means of a least squares estimation                      */
+//    void Dist(const cv::Mat& X, const cv::Mat& X_p, cv::Mat& Out, cv::Mat& Out_p, const int& i){
+//        ClosePoints
+
+//    }
 
     /* Calculates distances among points of a Matrix of points        */
-    void Dist(const cv::Mat& P, cv::Mat& D){
+    void Dist(const cv::Mat P, cv::Mat& D){
         cv::Mat Aux1, Mt, M, D_i;
         // Matrix that calculates differences between elements
         cv::Mat T = Mat::ones(1, P.rows-1, CV_64F);
@@ -115,12 +161,12 @@ class Lane{
           cerr << "ERROR: Can't find video device " << im_deviceId << "\n";
           exit(1);
       }
-      im_cap.set(CAP_PROP_FRAME_WIDTH, im_width);
-      im_cap.set(CAP_PROP_FRAME_HEIGHT, im_height);
+      im_cap.set(CV_CAP_PROP_FRAME_WIDTH, im_width);
+      im_cap.set(CV_CAP_PROP_FRAME_HEIGHT, im_height);
       cout << "Camera successfully opened (ignore error messages above...)" << endl;
       cout << "Actual resolution: "
-           << im_cap.get(CAP_PROP_FRAME_WIDTH) << "x"
-           << im_cap.get(CAP_PROP_FRAME_HEIGHT) << endl;
+           << im_cap.get(CV_CAP_PROP_FRAME_WIDTH) << "x"
+           << im_cap.get(CV_CAP_PROP_FRAME_HEIGHT) << endl;
     }// Setup()
 
 
@@ -189,13 +235,14 @@ class Lane{
         }
 
         Dist(Xc,D);            // Calculates distance matrix
+
         // Tries to improve detection
         for( int i = 0; i < lines.size(); i++ ){
             int j=0;
             for( int ii = i; ii < lines.size()-1; ii++){
-                if(D.at<double>(i,ii)<100){                   // If centers are close
+                if(D.at<double>(i,ii)<200){                   // If centers are close
                     if(abs(m[i]-m[ii])<0.2*m[i]){             // And slopes are similar
-                        X_perto.at<double>(i,j+1) = ii + 1;    // ii+1 reffers to the element in Xc matrix
+                        X_perto.at<double>(i,j+1) = ii + 1;    // ii+1 reffers to position in Xc matrix
                         j++;
                     }//else{
 //                        r[i][ii] = (Xc.at<double>(ii, 2) - Xc.at<double>(i, 2))/(Xc.at<double>(ii, 1) - Xc.at<double>(i, 1));
@@ -205,23 +252,27 @@ class Lane{
                 }
             }
             X_perto.at<double>(i,0) = j;                    // Saves number of similar points
-
-cout <<"----------------X_perto "<< X_perto << endl;
         }
+        cout <<"----------------X_perto "<< X_perto << endl;
 
         for( int i = 0; i < lines.size(); i++ ){
-            cv::Mat Aux;
-            Aux.push_back(X_c.row(i));
-            // Checks if there are points close to the points close to point i
-            for( int ii = 1; ii <=X_perto.at<double>(i,0); ii++ ){
-                Aux.push_back(X_c.row(X_perto.at<double>(i,ii)));
-                if(X_perto.at<double>(ii,0)!=0){
+            cv::Mat Out_p2, Out2;
 
-                }
+            ClosePoints(Xc, X_perto, Out2, Out_p2, i);
                 // Plot lines detected by 'a roubada' algorithm
 //                line(thres_image2, Point(px[i][ii], py[i][ii]), Point(px[i][ii+1], py[i][ii+1]), Scalar(100,0,255), 3, 8, 0);
-            }
+
+                    cout <<"----------------i "<< i << endl;
+
+                    cout <<"----------------Out "<< Out2 << endl;
+                    cout <<"----------------Out_p "<< Out_p2 << endl;
+
+
+
         }
+
+
+        cout <<"----------------" << endl;
 
         cv::imshow(windowName2, thres_image1);                // Displays detected lines
         cv::imshow(windowName3, thres_image10);                // Displays detected lines
